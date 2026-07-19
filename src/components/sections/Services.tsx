@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { services } from "@/config/services";
 import { MaskLines, RuleGrow } from "@/components/ui/MaskReveal";
@@ -10,12 +10,27 @@ import { setServiceSceneOffset } from "@/experience/sceneState";
 function DesktopServices() {
   const [active, setActive] = useState(0);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const hoverTimer = useRef<number | null>(null);
   const service = services[active];
 
   const activate = (index: number) => {
     setActive(index);
     setServiceSceneOffset(services[index].scene);
   };
+
+  // Hover-intent: only activate after the cursor rests on a row, so sweeping
+  // the mouse across the rail doesn't thrash through every service.
+  const scheduleHover = (index: number) => {
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => activate(index), 140);
+  };
+  const cancelHover = () => {
+    if (hoverTimer.current !== null) {
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+  };
+  useEffect(() => cancelHover, []);
 
   const onKeyDown = (e: React.KeyboardEvent, index: number) => {
     let next: number | null = null;
@@ -41,14 +56,14 @@ function DesktopServices() {
             aria-labelledby={`service-tab-${service.id}`}
             className="relative min-h-[21rem]"
           >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={service.id}
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              >
+            {/* Keyed remount without exit animation: rapid tab switches can
+                never queue up or leave the panel blank mid-transition. */}
+            <motion.div
+              key={service.id}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            >
                 <span
                   aria-hidden="true"
                   className="index-num block text-[clamp(4rem,6vw,6.5rem)] leading-none text-white/[0.07]"
@@ -70,8 +85,7 @@ function DesktopServices() {
                     never the primary plan for your freight.
                   </p>
                 )}
-              </motion.div>
-            </AnimatePresence>
+            </motion.div>
           </div>
           <div className="mt-8">
             <TextLink href="#quote">Quote this service</TextLink>
@@ -99,8 +113,12 @@ function DesktopServices() {
               aria-selected={selected}
               aria-controls="service-panel"
               tabIndex={selected ? 0 : -1}
-              onClick={() => activate(i)}
-              onMouseEnter={() => activate(i)}
+              onClick={() => {
+                cancelHover();
+                activate(i);
+              }}
+              onMouseEnter={() => scheduleHover(i)}
+              onMouseLeave={cancelHover}
               onKeyDown={(e) => onKeyDown(e, i)}
               className={`group relative block w-full border-b border-line-dark/70 text-left transition-colors duration-300 first:border-t ${
                 selected ? "text-white" : "text-white/35 hover:text-white/75"
