@@ -35,32 +35,35 @@ export const desktopKeyframes: Record<SceneName, SceneKeyframe> = {
     rotY: 0.34,
     headlights: 0.35,
   },
-  // Full broadside — the "we own the equipment" study.
+  // Small broadside study tucked low-left, beneath the editorial intro —
+  // the truck aligns with content instead of running through it.
   why: {
-    camX: 11.8, camY: 1.9, camZ: 1.6,
-    tgtX: 0, tgtY: 1.25, tgtZ: 0,
+    camX: 24, camY: 3.6, camZ: -2,
+    tgtX: 0, tgtY: 5.3, tgtZ: -4.6,
     rotY: 0,
     headlights: 0.15,
   },
-  // Elevated rear three-quarter — trailer prominent while services change.
+  // Compact elevated rear three-quarter on a low-left "stage" while the
+  // service rail occupies the right column.
   services: {
-    camX: 8.6, camY: 3.8, camZ: -7.6,
-    tgtX: 0.4, tgtY: 1.0, tgtZ: -0.4,
+    camX: 17, camY: 5.6, camZ: -14.5,
+    tgtX: -2.0, tgtY: 3.9, tgtZ: -2.2,
     rotY: 0,
     headlights: 0.1,
   },
-  // Truck yields the frame to the tracking dashboard (sits left, smaller).
+  // Truck becomes a small contextual object low-left; the dashboard leads.
   technology: {
-    camX: 8.4, camY: 2.4, camZ: 12.6,
-    tgtX: 5.4, tgtY: 1.6, tgtZ: 0,
+    camX: 9.5, camY: 2.6, camZ: 14.5,
+    tgtX: 7.0, tgtY: 2.6, tgtZ: 0,
     rotY: 0.42,
     headlights: 0.2,
   },
-  // Closing copy sits right — truck holds the left field, low and cinematic.
+  // Closing copy sits right — front three-quarter holds the left field,
+  // headlights up. Mirrors the hero without repeating it.
   closing: {
-    camX: 4.6, camY: 1.3, camZ: 9.4,
-    tgtX: 2.6, tgtY: 1.6, tgtZ: 0.3,
-    rotY: -0.12,
+    camX: 5.8, camY: 1.45, camZ: 8.8,
+    tgtX: 3.4, tgtY: 1.85, tgtZ: 0.7,
+    rotY: 0.3,
     headlights: 1,
   },
 };
@@ -68,46 +71,89 @@ export const desktopKeyframes: Record<SceneName, SceneKeyframe> = {
 /** Mobile: camera pulled back and centered, gentler lateral moves. */
 export const mobileKeyframes: Record<SceneName, SceneKeyframe> = {
   hero: {
-    camX: 5.4, camY: 2.2, camZ: 12.2,
-    tgtX: 0, tgtY: 2.5, tgtZ: 0.4,
+    camX: 5.4, camY: 2.1, camZ: 12.6,
+    tgtX: 0, tgtY: 3.05, tgtZ: 0.4,
     rotY: 0.34,
     headlights: 0.35,
   },
   why: {
-    camX: 12.6, camY: 2.2, camZ: 2.0,
-    tgtX: 0, tgtY: 1.6, tgtZ: 0,
+    camX: 17, camY: 2.8, camZ: 0,
+    tgtX: 0, tgtY: 3.0, tgtZ: 0,
     rotY: 0,
     headlights: 0.15,
   },
   services: {
-    camX: 8.8, camY: 4.4, camZ: -9.4,
-    tgtX: 0, tgtY: 1.2, tgtZ: -0.4,
+    camX: 14, camY: 5.0, camZ: -12.5,
+    tgtX: 0, tgtY: 2.8, tgtZ: -0.5,
     rotY: 0,
     headlights: 0.1,
   },
   technology: {
-    camX: 6.4, camY: 2.8, camZ: 14.2,
-    tgtX: 1.6, tgtY: 1.8, tgtZ: 0,
+    camX: 7.5, camY: 2.9, camZ: 15.5,
+    tgtX: 2.2, tgtY: 2.4, tgtZ: 0,
     rotY: 0.42,
     headlights: 0.2,
   },
   closing: {
-    camX: 5.2, camY: 1.6, camZ: 12.0,
-    tgtX: 0, tgtY: 2.3, tgtZ: 0.4,
+    camX: 5.2, camY: 1.7, camZ: 12.4,
+    tgtX: 0, tgtY: 2.9, tgtZ: 0.4,
     rotY: 0.22,
     headlights: 1,
   },
 };
 
 export const sceneTargets = {
-  /** Base camera/truck state — owned by the scroll timeline. */
+  /** Base camera/truck state — recomputed every frame from chapter progress. */
   base: { ...desktopKeyframes.hero },
   /** Additive nudge — owned by the Services interaction. */
   service: { rotY: 0, camX: 0, camY: 0 },
 };
 
-export function applyKeyframes(kf: Record<SceneName, SceneKeyframe>) {
-  Object.assign(sceneTargets.base, kf.hero);
+/**
+ * Scroll progress (0–1) through each chapter's transition range, written by
+ * ScrollTrigger. The frame loop blends keyframes from these values, which is
+ * deterministic at any scroll position — unlike chained scrub tweens, which
+ * depend on update order after large scroll jumps.
+ */
+export const CHAPTER_ORDER = ["why", "services", "technology", "closing"] as const;
+export type ChapterName = (typeof CHAPTER_ORDER)[number];
+
+export const chapterProgress: Record<ChapterName, number> = {
+  why: 0,
+  services: 0,
+  technology: 0,
+  closing: 0,
+};
+
+/** Hero entrance: 0 = raised/rotated intro pose, 1 = settled. */
+export const entrance = { t: 1 };
+
+const KEYS: (keyof SceneKeyframe)[] = [
+  "camX", "camY", "camZ", "tgtX", "tgtY", "tgtZ", "rotY", "headlights",
+];
+
+export function computeBase(
+  out: SceneKeyframe,
+  kfs: Record<SceneName, SceneKeyframe>
+) {
+  Object.assign(out, kfs.hero);
+  for (const name of CHAPTER_ORDER) {
+    const p = chapterProgress[name];
+    if (p <= 0) continue;
+    const kf = kfs[name];
+    for (const key of KEYS) {
+      out[key] += (kf[key] - out[key]) * p;
+    }
+  }
+  const settled = entrance.t;
+  if (settled < 1) {
+    const inv = 1 - settled;
+    out.camX += 2.6 * inv;
+    out.camY += 1.4 * inv;
+    out.camZ += 5.5 * inv;
+    out.rotY -= 0.55 * inv;
+    out.headlights *= settled;
+  }
 }
 
 /**
@@ -127,13 +173,3 @@ export function setServiceSceneOffset(offset: {
   });
 }
 
-export function resetServiceSceneOffset() {
-  gsap.to(sceneTargets.service, {
-    rotY: 0,
-    camX: 0,
-    camY: 0,
-    duration: 0.9,
-    ease: "power2.out",
-    overwrite: true,
-  });
-}

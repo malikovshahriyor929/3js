@@ -9,48 +9,50 @@ import { MaskLines, RuleGrow } from "@/components/ui/MaskReveal";
  * itself makes the argument — no cards, no icon chips.
  */
 
-const drawTransition = (delay: number) => ({
-  duration: 1.1,
-  delay,
-  ease: [0.65, 0, 0.35, 1] as const,
-});
-
 function FlowStop({
   x,
   label,
   sub,
   tone,
   delay,
+  align = "center",
 }: {
   x: string;
   label: string;
   sub?: string;
   tone: "muted" | "blue";
   delay: number;
+  align?: "start" | "center" | "end";
 }) {
+  const alignClass =
+    align === "start"
+      ? "items-start text-left"
+      : align === "end"
+        ? "-translate-x-full items-end text-right"
+        : "-translate-x-1/2 items-center text-center";
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.6 }}
       transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="absolute top-0 -translate-x-1/2"
+      className={`absolute top-0 flex flex-col ${alignClass}`}
       style={{ left: x }}
     >
       <span
-        className={`mx-auto block size-2.5 rounded-full ${
+        className={`block size-2.5 rounded-full ${
           tone === "blue" ? "bg-blue" : "bg-ink/30"
         }`}
       />
       <p
-        className={`mt-3 text-center font-display text-[0.82rem] font-bold tracking-tight sm:text-[0.95rem] ${
+        className={`mt-3 font-display text-[0.82rem] font-bold tracking-tight sm:text-[0.95rem] ${
           tone === "blue" ? "text-ink" : "text-ink/55"
         }`}
       >
         {label}
       </p>
       {sub && (
-        <p className="mt-0.5 text-center text-[0.68rem] text-muted sm:text-[0.72rem]">
+        <p className="mt-0.5 text-[0.68rem] text-muted sm:text-[0.72rem]">
           {sub}
         </p>
       )}
@@ -59,34 +61,25 @@ function FlowStop({
 }
 
 function FlowLine({
-  progressColor,
+  tone,
   baseDelay,
 }: {
-  progressColor: string;
+  tone: "muted" | "blue";
   baseDelay: number;
 }) {
   return (
-    <svg
-      viewBox="0 0 100 1"
-      preserveAspectRatio="none"
-      className="absolute left-0 top-[4px] h-px w-full overflow-visible"
-      aria-hidden="true"
-    >
-      <line x1="0" y1="0.5" x2="100" y2="0.5" stroke="rgba(16,24,32,0.15)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      <motion.line
-        x1="0"
-        y1="0.5"
-        x2="100"
-        y2="0.5"
-        stroke={progressColor}
-        strokeWidth="2"
-        vectorEffect="non-scaling-stroke"
-        initial={{ pathLength: 0 }}
-        whileInView={{ pathLength: 1 }}
+    <div className="absolute left-0 right-0 top-[4px]" aria-hidden="true">
+      <div className="h-px w-full bg-ink/15" />
+      <motion.div
+        className={`-mt-px h-[2px] origin-left ${
+          tone === "blue" ? "bg-blue" : "bg-ink/40"
+        }`}
+        initial={{ scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
         viewport={{ once: true, amount: 0.6 }}
-        transition={drawTransition(baseDelay)}
+        transition={{ duration: 1.1, delay: baseDelay, ease: [0.65, 0, 0.35, 1] }}
       />
-    </svg>
+    </div>
   );
 }
 
@@ -124,11 +117,11 @@ export function AssetComparison() {
             role="img"
             aria-label="Broker-only flow: Shipper, then broker, then additional intermediary, then carrier — four hand-offs"
           >
-            <FlowLine progressColor="rgba(16,24,32,0.4)" baseDelay={0.2} />
-            <FlowStop x="2%" label="Shipper" tone="muted" delay={0.2} />
+            <FlowLine tone="muted" baseDelay={0.2} />
+            <FlowStop x="0%" align="start" label="Shipper" tone="muted" delay={0.2} />
             <FlowStop x="34%" label="Broker" sub="adds margin" tone="muted" delay={0.5} />
             <FlowStop x="66%" label="Intermediary" sub="adds distance" tone="muted" delay={0.8} />
-            <FlowStop x="98%" label="Carrier" sub="unknown truck" tone="muted" delay={1.05} />
+            <FlowStop x="100%" align="end" label="Carrier" sub="unknown truck" tone="muted" delay={1.05} />
           </div>
         </div>
 
@@ -145,10 +138,10 @@ export function AssetComparison() {
             role="img"
             aria-label="Ship Smart flow: Shipper, then Ship Smart, then delivery — one accountable hand-off"
           >
-            <FlowLine progressColor="#0b63f6" baseDelay={1.3} />
-            <FlowStop x="2%" label="Shipper" tone="blue" delay={1.3} />
+            <FlowLine tone="blue" baseDelay={1.3} />
+            <FlowStop x="0%" align="start" label="Shipper" tone="blue" delay={1.3} />
             <FlowStop x="50%" label="Ship Smart" sub="our trucks, our team" tone="blue" delay={1.55} />
-            <FlowStop x="98%" label="Delivery" sub="one point of contact" tone="blue" delay={1.8} />
+            <FlowStop x="100%" align="end" label="Delivery" sub="one point of contact" tone="blue" delay={1.8} />
           </div>
         </div>
 

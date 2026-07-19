@@ -49,7 +49,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${manrope.variable}`}>
+    // suppressHydrationWarning: the dev-only ?static=1 script and Lenis both
+    // add classes to <html> outside React.
+    <html
+      lang="en"
+      className={`${inter.variable} ${manrope.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         {process.env.NODE_ENV !== "production" && (
           // Dev-only: ?static=1 renders the page in its final state at first

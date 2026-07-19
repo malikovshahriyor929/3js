@@ -206,7 +206,7 @@ export function Services() {
       data-truck-visible
       data-scene="services"
       aria-labelledby="services-heading"
-      className="relative scroll-mt-20 py-28 lg:py-44"
+      className="relative scroll-mt-20 pt-28 pb-28 lg:pt-44 lg:pb-72"
     >
       <div className="container-x">
         <div className="flex flex-wrap items-end justify-between gap-6">

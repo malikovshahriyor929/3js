@@ -3,23 +3,21 @@
 import { useEffect } from "react";
 import { gsap, ScrollTrigger } from "@/animations/gsap";
 import {
-  desktopKeyframes,
-  mobileKeyframes,
-  sceneTargets,
-  type SceneKeyframe,
-  type SceneName,
+  chapterProgress,
+  entrance,
+  type ChapterName,
 } from "@/experience/sceneState";
 
 /**
  * The scroll-driven truck journey.
  *
- * Each homepage chapter scrubs the shared scene targets toward its keyframe
- * as it enters the viewport; the frame loop (CameraRig/TruckModel) applies
- * damping. Runs entirely outside React's render path after setup.
+ * Each chapter's ScrollTrigger only records its transition progress; the
+ * R3F frame loop (CameraRig) blends keyframes from those values and damps
+ * the live camera toward the result. No React state per scroll tick.
  */
 
 type Chapter = {
-  scene: SceneName;
+  scene: ChapterName;
   trigger: string;
   start: string;
   end: string;
@@ -32,33 +30,21 @@ const chapters: Chapter[] = [
   { scene: "closing", trigger: "[data-scene='closing']", start: "top 95%", end: "top 30%" },
 ];
 
-export function ScrollSceneController({
-  isMobile,
-  modelReady,
-}: {
-  isMobile: boolean;
-  modelReady: boolean;
-}) {
-  // Scroll choreography — rebuilt if the breakpoint changes.
+export function ScrollSceneController({ modelReady }: { modelReady: boolean }) {
   useEffect(() => {
-    const keyframes = isMobile ? mobileKeyframes : desktopKeyframes;
-
-    const ctx = gsap.context(() => {
-      for (const chapter of chapters) {
-        const kf: SceneKeyframe = keyframes[chapter.scene];
-        gsap.to(sceneTargets.base, {
-          ...kf,
-          ease: "none",
-          immediateRender: false,
-          scrollTrigger: {
-            trigger: chapter.trigger,
-            start: chapter.start,
-            end: chapter.end,
-            scrub: 0.6,
-          },
-        });
-      }
-    });
+    const triggers = chapters.map((chapter) =>
+      ScrollTrigger.create({
+        trigger: chapter.trigger,
+        start: chapter.start,
+        end: chapter.end,
+        onUpdate: (self) => {
+          chapterProgress[chapter.scene] = self.progress;
+        },
+        onRefresh: (self) => {
+          chapterProgress[chapter.scene] = self.progress;
+        },
+      })
+    );
 
     // Fonts/images can shift layout after mount.
     const onLoad = () => ScrollTrigger.refresh();
@@ -66,42 +52,28 @@ export function ScrollSceneController({
 
     return () => {
       window.removeEventListener("load", onLoad);
-      ctx.revert();
+      triggers.forEach((t) => t.kill());
     };
-  }, [isMobile]);
+  }, []);
 
   // Cinematic entrance once the model is ready (skipped if already scrolled).
   useEffect(() => {
     if (!modelReady) return;
-    if (window.scrollY > window.innerHeight * 0.4) return;
-
-    const keyframes = isMobile ? mobileKeyframes : desktopKeyframes;
-    const hero = keyframes.hero;
-
-    const from = {
-      camX: hero.camX + 2.6,
-      camY: hero.camY + 1.4,
-      camZ: hero.camZ + 5.5,
-      rotY: hero.rotY - 0.55,
-      headlights: 0,
-    };
-    Object.assign(sceneTargets.base, from);
-
-    const tween = gsap.to(sceneTargets.base, {
-      camX: hero.camX,
-      camY: hero.camY,
-      camZ: hero.camZ,
-      rotY: hero.rotY,
-      headlights: hero.headlights,
+    if (window.scrollY > window.innerHeight * 0.4) {
+      entrance.t = 1;
+      return;
+    }
+    entrance.t = 0;
+    const tween = gsap.to(entrance, {
+      t: 1,
       duration: 2.0,
       ease: "expo.out",
       delay: 0.15,
     });
     return () => {
       tween.kill();
+      entrance.t = 1;
     };
-    // Entrance should only run once per load — breakpoint at load time is fine.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelReady]);
 
   return null;

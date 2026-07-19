@@ -10,7 +10,6 @@ import { ScrollSceneController } from "@/experience/ScrollSceneController";
 import {
   desktopKeyframes,
   mobileKeyframes,
-  sceneTargets,
 } from "@/experience/sceneState";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 
@@ -52,21 +51,12 @@ export default function TruckExperience({
     return () => observer.disconnect();
   }, []);
 
-  // Snap to the correct hero keyframe for the breakpoint before first paint.
-  useEffect(() => {
-    if (window.scrollY < window.innerHeight * 0.4) {
-      const hero = (isMobile ? mobileKeyframes : desktopKeyframes).hero;
-      if (reducedMotion || !modelReady) {
-        Object.assign(sceneTargets.base, hero);
-      }
-    }
-  }, [isMobile, reducedMotion, modelReady]);
-
   const frameloop = useMemo(() => {
     if (reducedMotion) return "demand" as const;
     return sceneInView ? ("always" as const) : ("demand" as const);
   }, [reducedMotion, sceneInView]);
 
+  const keyframes = isMobile ? mobileKeyframes : desktopKeyframes;
   const initialCam = desktopKeyframes.hero;
 
   return (
@@ -95,6 +85,7 @@ export default function TruckExperience({
       >
         <SceneLighting quality={isMobile ? "low" : "high"} />
         <CameraRig
+          keyframes={keyframes}
           parallax={!reducedMotion && !isMobile && finePointer}
           lambda={reducedMotion ? 1000 : 3.4}
         />
@@ -105,9 +96,7 @@ export default function TruckExperience({
         </Suspense>
       </Canvas>
 
-      {!reducedMotion && (
-        <ScrollSceneController isMobile={isMobile} modelReady={modelReady} />
-      )}
+      {!reducedMotion && <ScrollSceneController modelReady={modelReady} />}
     </>
   );
 }

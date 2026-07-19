@@ -3,17 +3,25 @@
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { MathUtils, Vector3 } from "three";
-import { sceneTargets } from "@/experience/sceneState";
+import {
+  computeBase,
+  sceneTargets,
+  type SceneKeyframe,
+  type SceneName,
+} from "@/experience/sceneState";
 
 /**
- * Damps the live camera toward the GSAP-written targets each frame and
- * layers a subtle cursor parallax on desktop. Reading mutable targets in
- * useFrame keeps React completely out of the per-frame path.
+ * Composes the base scene state from scroll-chapter progress every frame,
+ * then damps the live camera toward it, layering a subtle cursor parallax
+ * on desktop. Reading mutable targets in useFrame keeps React completely
+ * out of the per-frame path.
  */
 export function CameraRig({
+  keyframes,
   parallax,
   lambda = 3.4,
 }: {
+  keyframes: Record<SceneName, SceneKeyframe>;
   /** Enable cursor-based drift (desktop, motion allowed). */
   parallax: boolean;
   lambda?: number;
@@ -34,6 +42,7 @@ export function CameraRig({
 
   useFrame(({ camera }, delta) => {
     const { base, service } = sceneTargets;
+    computeBase(base, keyframes);
     const px = parallax ? pointer.current.x * 0.4 : 0;
     const py = parallax ? -pointer.current.y * 0.22 : 0;
 
